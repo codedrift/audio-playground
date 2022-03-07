@@ -1,0 +1,20 @@
+.root {
+  /* background: #212121; */
+  width: 100%;
+  min-height: 100vh;
+}
+
+.indicatorWrapper {
+  width: 200px;
+  height: 32px;
+  background-color: #212121;
+  position: relative;
+}
+
+.indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background-color: blue;
+}
