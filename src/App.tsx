@@ -1,7 +1,8 @@
+import Slider from "rc-slider";
+import "rc-slider/assets/index.css";
 import React, { useRef, useState } from "react";
 import { useInterval } from "usehooks-ts";
 import styles from "./App.module.css";
-
 const CANVAS_WIDTH = 500;
 const CANVAS_HEIGHT = 100;
 const FPS = 30;
@@ -14,25 +15,43 @@ function closeStream(stream?: MediaStream) {
   }
 }
 
-function calculateStats(analyzer: AnalyserNode) {
+function calculateStats(analyzer: AnalyserNode, byteData: Uint8Array) {
   const maxDb = analyzer.maxDecibels;
   const minDb = analyzer.minDecibels;
 
-  const dataArray = new Float32Array(analyzer.frequencyBinCount);
+  // const dataArray = new Uint8Array(analyzer.frequencyBinCount);
 
+  // analyzer.getByteFrequencyData(dataArray);
   //TODO: get some sort of percentage
+
+  const mapped = byteData.map((i) => {
+    if (i <= 127) {
+      return 0 + 127 - i;
+    }
+    return i - 127;
+  });
+
+  const nonZero = mapped.filter((i) => i > 0);
+
+  const highest = nonZero.sort().reverse()[0];
+
+  const avg =
+    nonZero.length > 0
+      ? nonZero.reduce((prev, curr) => prev + curr, 0) / nonZero.length
+      : 0;
 
   console.log("STATS", {
     analyzer,
     minDb,
     maxDb,
-    dataArray,
     bincount: analyzer.frequencyBinCount,
-    // mapped,
+    data: byteData,
+    mapped,
+    highest,
     // percent,
   });
 
-  return { avg: 0 };
+  return { percent: avg / 127, highest: highest / 127 };
 }
 
 function App() {
@@ -43,6 +62,7 @@ function App() {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [frame, setFrame] = useState<number>(0);
   const [stats, setStats] = useState<any>({});
+  const [high, setHigh] = useState<number>(0);
 
   const renderToCanvas = () => {
     if (analyzer) {
@@ -51,8 +71,11 @@ function App() {
       const bufferLength = analyzer.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       analyzer.getByteTimeDomainData(dataArray);
-      const s = calculateStats(analyzer);
+      const s = calculateStats(analyzer, dataArray);
       console.log(s);
+      if (s.highest > high) {
+        setHigh(s.highest);
+      }
       setStats(s);
       if (canvasRef.current) {
         const ctx = canvasRef.current.getContext("2d");
@@ -119,6 +142,7 @@ function App() {
     const source = audioContext.createMediaStreamSource(mStream);
     const analyser = audioContext.createAnalyser();
     source.connect(analyser);
+
     analyser.fftSize = 2048;
 
     setAudioContext(audioContext);
@@ -138,6 +162,8 @@ function App() {
     }
   };
 
+  const perc = (stats.percent || 0) * 100;
+
   return (
     <div className={styles.root}>
       <button onClick={getPermission}>Permission</button>
@@ -149,11 +175,24 @@ function App() {
         <div
           className={styles.indicator}
           style={{
-            width: `${stats.avg * 100}%`,
+            width: `${perc}%`,
           }}
         >
-          <span>{`${Math.ceil(stats.avg * 100)}%`}</span>
+          <span>{`${Math.ceil(perc)}%`}</span>
         </div>
+      </div>
+      <div className={styles.slider}>
+        <Slider
+          min={0}
+          max={100}
+          value={Math.ceil(high * 100)}
+          railStyle={
+            {
+              // width: "80%",
+              // backgroundColor: "red",
+            }
+          }
+        />
       </div>
     </div>
   );

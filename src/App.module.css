@@ -18,3 +18,8 @@
   bottom: 0;
   background-color: blue;
 }
+
+.slider {
+  padding: 16px;
+  max-width: 600px;
+}
